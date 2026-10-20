@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, DragEvent } from 'react';
-import { trackConfigUsage } from '../../../shared/analytics/analytics';
 import { AppDialog, MarkdownEditor, ProgressBar, useToast } from '../../../shared/ui';
 import type { BackgroundTaskState, OutlineSelectionItem, SaveOutlineRequest, SaveOutlineSelectionRequest } from '../types';
 import { OUTLINE_CONTENT_MODE_LABELS } from '../../../shared/types';
@@ -375,14 +374,6 @@ function OutlineEditPage({
         outline_expansion_mode: nextOutlineExpansionMode,
         word_control_options: outlineWordControlOptions,
         no_technical_score_mode: noTechnicalScoreMode,
-      });
-      trackConfigUsage({
-        outline_mode: outlineMode,
-        outline_expansion_mode: hasOriginalPlan ? nextOutlineExpansionMode : undefined,
-        word_control_enabled: outlineWordControlOptions.minimumWords > 0 || outlineWordControlOptions.maximumWords > 0 || outlineWordControlOptions.sectionWords > 0,
-        minimum_words: outlineWordControlOptions.minimumWords,
-        maximum_words: outlineWordControlOptions.maximumWords,
-        section_words: outlineWordControlOptions.sectionWords,
       });
       showToast('目录生成任务已在后台启动', 'success');
     } catch (error) {

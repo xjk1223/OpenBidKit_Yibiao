@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { trackNoticeBoardOpen } from '../../../shared/analytics/analytics';
 import { fetchNoticeList, type NoticeEntry } from '../../../shared/remoteNotice';
 import {
   EntryBrowserDialog,
@@ -38,7 +37,6 @@ function NoticeBoardDialog({ open, onOpenChange, onLoaded }: NoticeBoardDialogPr
         newerLabel="较新公告"
         olderLabel="较旧公告"
         load={fetchNoticeList}
-        onOpen={trackNoticeBoardOpen}
         onLoaded={handleLoaded}
         getKey={(entry) => entry.id}
         getOptionLabel={(entry) => entry.title}

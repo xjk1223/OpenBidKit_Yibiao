@@ -9,7 +9,6 @@ import ContentEditPage from './ContentEditPage';
 import { useTechnicalPlanWorkflow } from '../hooks/useTechnicalPlanWorkflow';
 import { generationSettingsTabs, type GenerationSettingsTab } from '../generationSettingsTabs';
 import { bidAnalysisTasks, getBidAnalysisTasks, isMissingBidAnalysisResult, isMissingTechnicalScoreItems } from '../services/bidAnalysisWorkflow';
-import { trackPageView } from '../../../shared/analytics/analytics';
 import { AppDialog, FloatingToolbar, ProgressBar, ToolbarArrowLeftIcon, ToolbarArrowRightIcon, ToolbarDocumentIcon, ToolbarSparkleIcon, useToast } from '../../../shared/ui';
 import type { BackgroundTaskState, BidAnalysisTasks, ContentGenerationOptions, GlobalFactGroupState, GlobalFactsMode, SaveOutlineRequest, SaveOutlineSelectionRequest, TechnicalPlanState, TechnicalPlanStep } from '../types';
 import type { TechnicalPlanOutlineData as OutlineData, TechnicalPlanOutlineItem as OutlineItem, OutlineWordControlOptions, WordExportProgressEvent } from '../../../shared/types';
@@ -335,10 +334,8 @@ function TechnicalPlanHome({ registerLeaveGuard }: TechnicalPlanHomeProps) {
   useEffect(() => {
     if (!hydrated) return;
 
-    const analyticsSection = state.originalPlanFile ? 'existing-plan-expansion' : 'technical-plan';
-    trackPageView(`${analyticsSection}/${state.step}`);
     void window.yibiao?.ui?.setCurrentView({ section: 'technical-plan', step: state.step });
-  }, [hydrated, state.originalPlanFile, state.step]);
+  }, [hydrated, state.step]);
 
   useEffect(() => {
     if (!hydrated || wordControlWarningDialog) return;

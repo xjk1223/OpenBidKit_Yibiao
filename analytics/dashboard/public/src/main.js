@@ -1,6 +1,5 @@
 import { loadSettings, saveSettings } from './api.js';
 import { loadAgentRuntime } from './pages/agentRuntime.js';
-import { loadAgentErrors, setupAgentErrorsPage } from './pages/agentErrors.js';
 import { bindChangelogEvents, loadChangelogs } from './pages/changelog.js';
 import { loadClients, loadClientDetail, loadIpStats, setupIpStatsActions } from './pages/clients.js';
 import { loadConfigUsage, loadModelUsage } from './pages/configUsage.js';
@@ -25,7 +24,7 @@ const tabLoaders = {
   traffic: () => loadTraffic(),
   config: () => loadConfigUsage(),
   models: () => loadModelUsage(),
-  agent: (options = {}) => Promise.all([loadAgentRuntime(), loadAgentErrors({ resetPage: options.resetAgentErrorPage })]),
+  agent: () => loadAgentRuntime(),
   latest: (options = {}) => loadLatest(options),
   'system-settings': () => loadSystemSettings(),
   'ip-blocks': () => Promise.all([loadIpBlocks(), loadVersionBlocksSafely()]),
@@ -50,7 +49,6 @@ function isTabCacheFresh(tab) {
 function saveSettingsAndClearCache() {
   saveSettings();
   tabLoadedAt.clear();
-  appState.agentErrorPage = 1;
   appState.clientsPage = 1;
 }
 
@@ -142,7 +140,6 @@ function bindEvents() {
   bindResourceEvents();
   setupPluginsPage();
   setupModelInfoCachePage();
-  setupAgentErrorsPage();
   setupIpBlocksPage();
   setupIpStatsActions();
   state.syncModelInfoCacheButton.addEventListener('click', syncModelInfoCache);
@@ -200,7 +197,7 @@ function bindEvents() {
   for (const button of state.tabButtons) {
     button.addEventListener('click', () => {
       activateTab(button.dataset.tabButton);
-      void refreshActiveTab({ resetClientsPage: true, resetLatestPage: true, resetIpPage: true, resetAgentErrorPage: true });
+      void refreshActiveTab({ resetClientsPage: true, resetLatestPage: true, resetIpPage: true });
     });
   }
 

@@ -20,7 +20,6 @@ export interface EntryBrowserDialogProps<T> {
   /** 读取全部条目，需已按新到旧排序；失败时抛错，弹窗展示重试 */
   load: () => Promise<T[]>;
   /** 每次打开弹窗时调用，用于埋点 */
-  onOpen?: () => void;
   /** 条目加载成功后回调，用于记录已读 */
   onLoaded?: (entries: T[]) => void;
   getKey: (entry: T) => string;
@@ -48,7 +47,6 @@ export default function EntryBrowserDialog<T>({
   newerLabel,
   olderLabel,
   load,
-  onOpen,
   onLoaded,
   getKey,
   getOptionLabel,
@@ -81,9 +79,8 @@ export default function EntryBrowserDialog<T>({
 
   useEffect(() => {
     if (!open) return;
-    onOpen?.();
     void loadEntries();
-    // 只在打开时触发一次，避免回调引用变化导致重复加载和重复埋点。
+    // 只在打开时触发一次，避免回调引用变化导致重复加载。
   }, [open]);
 
   return (

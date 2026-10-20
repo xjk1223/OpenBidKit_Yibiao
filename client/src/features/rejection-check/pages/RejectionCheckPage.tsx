@@ -1,6 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { trackPageView } from '../../../shared/analytics/analytics';
 import { AppDialog, AppSwitch, FloatingToolbar, isLibreOfficeRequiredMessage, MarkdownEditor, MarkdownFullscreenViewer, MarkdownRenderer, ProgressBar, ToolbarArrowLeftIcon, ToolbarArrowRightIcon, ToolbarDocumentIcon, UploadBoard, UploadEmpty, UploadFilePill, UploadRow, useDocumentParseNotice, useToast } from '../../../shared/ui';
 import type { FloatingToolbarGroup } from '../../../shared/ui';
 import { hasExportableRejectionResults } from '../exportState';
@@ -582,7 +581,6 @@ function RejectionCheckPage() {
   const [busy, setBusy] = useState<'technical-plan' | 'tender-upload' | 'bid-upload' | 'remove' | null>(null);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportedExcelPath, setExportedExcelPath] = useState('');
-  const [analyticsReady, setAnalyticsReady] = useState(false);
   const hydratedRef = useRef(false);
   const autoStartedSignatureRef = useRef('');
   const activeTaskTypesRef = useRef<Set<string> | null>(null);
@@ -686,17 +684,6 @@ function RejectionCheckPage() {
     && logicCheckResult.inputSignature !== bidSignature
     && (logicCheckResult.findings.length || logicCheckResult.status !== 'idle'),
   );
-
-  useEffect(() => {
-    if (!analyticsReady) return;
-
-    const page = step === 'documents'
-      ? `rejection-check/documents/${activeDocumentTab === 'tender' || activeTenderSourceDocument ? 'tender' : 'bid'}`
-      : step === 'items'
-        ? `rejection-check/items/${activeResultTab}`
-        : `rejection-check/results/${activeCheckResultTab}`;
-    trackPageView(page);
-  }, [activeCheckResultTab, activeDocumentTab, activeResultTab, activeTenderSourceDocument, analyticsReady, step]);
 
   function syncCustomCheckItemsFromWorkspace(value: unknown) {
     const nextValue = typeof value === 'string' ? value : '';
@@ -804,7 +791,6 @@ function RejectionCheckPage() {
       .finally(() => {
         if (!canceled) {
           hydratedRef.current = true;
-          setAnalyticsReady(true);
           if (activeTaskTypesRef.current) {
             markStaleTasksWithoutActive(activeTaskTypesRef.current);
           }

@@ -1,10 +1,9 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Popover from '@radix-ui/react-popover';
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { trackConfigUsage } from '../../../shared/analytics/analytics';
 import { AppDialog, MarkdownEditor, MarkdownFullscreenViewer, MarkdownRenderer, ProgressBar, useToast } from '../../../shared/ui';
 import { OUTLINE_CONTENT_MODE_LABELS } from '../../../shared/types';
-import type { ClientConfig, OutlineContentMode, TechnicalPlanOutlineData as OutlineData, TechnicalPlanOutlineItem as OutlineItem, OutlineWordControlOptions } from '../../../shared/types';
+import type { OutlineContentMode, TechnicalPlanOutlineData as OutlineData, TechnicalPlanOutlineItem as OutlineItem, OutlineWordControlOptions } from '../../../shared/types';
 import { countReadableWords } from '../../../shared/utils/wordCount';
 import type { BackgroundTaskState, ContentGenerationOptions, ContentGenerationRuntimeState, ContentGenerationSectionStatus, ContentGenerationSections } from '../types';
 import ContentWordPreview from '../components/ContentWordPreview';
@@ -13,7 +12,6 @@ import type { ExportFormatConfig } from '../../../shared/types/exportFormat';
 import { DEFAULT_EXPORT_FORMAT } from '../../../shared/types/exportFormat';
 import { buildExportFormatCssVars } from '../../../shared/utils/exportFormatCss';
 import { formatOutlineTitle } from '../../../shared/utils/outlineNumbering';
-import { getDefaultImageLayoutShares, type ImageLayoutKey } from '../../../../electron/shared/imageLayout/index.mjs';
 
 interface ContentEditPageProps {
   stepNumber: string;
@@ -38,20 +36,6 @@ interface OutlineNodeMeta {
   status: TreeStatus;
   leafCount: number;
   words: number;
-}
-
-type ContentGenerationAction = 'start' | 'continue' | 'regenerate' | 'regenerate_section';
-
-// 布局开关只上报当前配图比例档位可用的布局，档位份额为 0 的布局不计入统计。
-function buildImageLayoutUsage(options: ContentGenerationOptions) {
-  const defaultShares = getDefaultImageLayoutShares(options.imageQuantity);
-  const usage = (key: ImageLayoutKey, enabled: boolean) => (defaultShares[key] > 0 ? enabled : undefined);
-  return {
-    image_layout_single: usage('single', options.useSingleImageLayout),
-    image_layout_image_text: usage('imageText', options.useImageTextLayout),
-    image_layout_three_images: usage('threeImages', options.useThreeImagesLayout),
-    image_layout_four_images: usage('fourImages', options.useFourImagesLayout),
-  };
 }
 
 const statusLabels: Record<TreeStatus, string> = {
@@ -554,7 +538,6 @@ function ContentEditPage({
     if (taskBlocksGeneration || (!retryingWordConversion && !retryingConsistency && !retryingSectionModification && !retryingBodyGeneration && !retryingTableCleanup && !retryingLayoutCheck && !retryingExportRepair)) return;
     try {
       await window.yibiao?.tasks.startContentGeneration({ retryFailedSections: true });
-      trackConfigUsage({ content_generation_action: 'retry_failed_sections' });
       showToast(retryingExportRepair ? '导出修复已从原会话继续' : retryingLayoutCheck ? '格式自检已从原进度继续' : retryingTableCleanup ? '去表格已从原会话继续' : retryingSectionModification ? '小节修改已从原会话继续' : retryingBodyGeneration ? '正文生成已从原会话继续' : retryingConsistency ? '一致性审计已从原会话继续' : retryingWordConversion ? 'Word 转换重试已在后台启动' : '失败小节重试任务已在后台启动', 'success');
     } catch (error) {
       showToast(error instanceof Error ? error.message : '启动失败小节重试失败', 'error');
@@ -580,14 +563,10 @@ function ContentEditPage({
 
   const launchContentGeneration = async ({
     savedGenerationOptions,
-    config,
     regenerate,
-    contentGenerationAction,
   }: {
     savedGenerationOptions: ContentGenerationOptions;
-    config?: ClientConfig | null;
     regenerate: boolean;
-    contentGenerationAction: ContentGenerationAction;
   }) => {
     if (!outlineData?.outline?.length) {
       showToast('请先生成目录', 'info');
@@ -604,17 +583,6 @@ function ContentEditPage({
       regenerate,
       generationOptions: savedGenerationOptions,
     });
-    trackConfigUsage({
-      table_requirement: savedGenerationOptions.tableRequirement,
-      use_mermaid_images: savedGenerationOptions.useMermaidImages,
-      use_ai_images: savedGenerationOptions.useAiImages,
-      image_quantity: savedGenerationOptions.imageQuantity,
-      ...buildImageLayoutUsage(savedGenerationOptions),
-      content_generation_action: contentGenerationAction,
-      enable_consistency_audit: true,
-      consistency_repair_mode: 'agent',
-      enable_original_plan_coverage_audit: false,
-    }, config);
     showToast(regenerate ? '正文重新生成任务已在后台启动' : '正文生成任务已在后台启动', 'success');
   };
 
@@ -664,12 +632,7 @@ function ContentEditPage({
       );
       if (!savedGenerationOptions) return;
       const regenerate = leaves.length > 0 && completedCount === leaves.length;
-      const contentGenerationAction: ContentGenerationAction = regenerate
-          ? 'regenerate'
-          : completedCount > 0
-            ? 'continue'
-            : 'start';
-      await launchContentGeneration({ savedGenerationOptions, config, regenerate, contentGenerationAction });
+      await launchContentGeneration({ savedGenerationOptions, regenerate });
     } catch (error) {
       showToast(error instanceof Error ? error.message : '启动正文生成任务失败', 'error');
     } finally {
@@ -700,15 +663,6 @@ function ContentEditPage({
         targetItemId: requirementItem.id,
         requirement: regenerateRequirement,
       });
-      trackConfigUsage({
-        table_requirement: savedGenerationOptions.tableRequirement,
-        use_mermaid_images: savedGenerationOptions.useMermaidImages,
-        use_ai_images: savedGenerationOptions.useAiImages,
-        content_generation_action: 'regenerate_section',
-        enable_consistency_audit: false,
-        consistency_repair_mode: 'agent',
-        enable_original_plan_coverage_audit: false,
-      }, config);
       setSelectedItemId(requirementItem.id);
       setRequirementItem(null);
       setRegenerateRequirement('');

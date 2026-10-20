@@ -199,7 +199,7 @@ Packaging artifacts are written to `client/release/`.
 - **UI**: Vite + React + TypeScript with global CSS and Radix UI.
 - **Data and Tasks**: Configuration is stored in local files and business state in SQLite. Long-running tasks execute in the Main process and can be resumed.
 - **AI and Agent**: AI Service manages model requests, while Pi Agent runs agent tasks in independent Runtime / Session instances.
-- **Documents and Online Services**: Supports local or MinerU parsing, Open XML, and local image rendering. Cloudflare Worker provides notices, resources, plugins, model information, licensing, and analytics services.
+- **Documents and Online Services**: Supports local or MinerU parsing, Open XML, and local image rendering. Cloudflare Worker provides notices, resources, plugins, model information, and licensing services (the client sends no usage analytics).
 
 ### 🏗️ Project Structure
 

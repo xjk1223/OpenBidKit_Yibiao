@@ -201,7 +201,7 @@ npm run dist:mac    # macOS Intel / Apple Silicon DMG 和 ZIP
 - **界面层**：Vite + React + TypeScript，使用全局 CSS 和 Radix UI
 - **数据与任务**：配置保存在本地文件，业务状态存入 SQLite；耗时任务在 Main 后台运行并支持恢复
 - **AI 与 Agent**：AI Service 统一管理模型请求，Pi Agent 使用独立 Runtime / Session 执行智能体任务
-- **文档与在线服务**：支持本地或 MinerU 解析、Open XML 和本地图片渲染；Cloudflare Worker 提供公告、资源、插件、模型信息、许可证及统计服务
+- **文档与在线服务**：支持本地或 MinerU 解析、Open XML 和本地图片渲染；Cloudflare Worker 提供公告、资源、插件、模型信息、许可证等在线服务（客户端不上报使用统计）
 
 ### 🏗️ 项目结构
 

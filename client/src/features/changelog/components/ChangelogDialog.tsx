@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { trackChangelogOpen } from '../../../shared/analytics/analytics';
 import { EntryBrowserDialog, MarkdownRenderer } from '../../../shared/ui';
 import { fetchChangelogs, type ChangelogEntry } from '../services/changelogService';
 
@@ -29,7 +28,6 @@ function ChangelogDialog({ open, onOpenChange, onLoaded }: ChangelogDialogProps)
       newerLabel="较新版本"
       olderLabel="较旧版本"
       load={fetchChangelogs}
-      onOpen={trackChangelogOpen}
       onLoaded={handleLoaded}
       getKey={(entry) => entry.version}
       getOptionLabel={(entry) => `v${entry.version}`}

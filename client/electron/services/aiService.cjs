@@ -34,8 +34,6 @@ const MULTIMODAL_IMAGE_MAX_EDGE = 2048;
 const MULTIMODAL_IMAGE_JPEG_QUALITY = 85;
 
 const IMAGE_MODEL_TEST_TIMEOUT_MESSAGE = '生图模型测试超时，请检查 Base URL、API Key 或模型名称';
-const ANALYTICS_ENDPOINT = 'https://analytics.agnet.top/track';
-const ANALYTICS_PROJECT_NAME = 'yibiao-client';
 const MODEL_INFO_ENDPOINT = 'https://analytics.agnet.top/model-info';
 const OPENAI_IMAGE_PROVIDER_META = {
   jinlong: {
@@ -119,30 +117,8 @@ function onTextTokenStatsChanged(listener) {
   return textTokenStatsStore.onTextTokenStatsChanged(listener);
 }
 
-function normalizeAnalyticsEndpointHost(baseUrl) {
-  const rawValue = String(baseUrl || '').trim();
-  if (!rawValue) {
-    return '';
-  }
-
-  const candidates = rawValue.includes('://') ? [rawValue] : [`https://${rawValue}`];
-  for (const candidate of candidates) {
-    try {
-      return new URL(candidate).hostname.toLowerCase();
-    } catch {
-      // 尝试下一个候选格式。
-    }
-  }
-
-  return '';
-}
-
 function extractOpenAIUsage(responseData) {
   return normalizeTokenUsage(responseData?.usage);
-}
-
-function extractGoogleUsage(responseData) {
-  return normalizeTokenUsage(responseData?.usageMetadata || responseData?.usage_metadata);
 }
 
 function normalizeRequestTimeoutMs(request) {
@@ -352,50 +328,6 @@ function createHeaders(apiKey, textModelProvider) {
     Authorization: `Bearer ${apiKey}`,
     ...(textModelProvider === 'official' ? { 'X-Yibiao-Client-Type': 'open-source' } : {}),
   };
-}
-
-function trackAiRequest(app, config, payload) {
-  void Promise.resolve()
-    .then(() => {
-      const imageConfig = config.image_model || {};
-      const requestType = payload.ai_request_type || '';
-      const tokenUsage = normalizeTokenUsage(payload.usage);
-      const modelProvider = requestType === 'image'
-        ? imageConfig.provider || ''
-        : config.text_model_provider || '';
-      const modelBaseUrl = requestType === 'image'
-        ? imageConfig.base_url || ''
-        : config.base_url || '';
-      const modelEndpointHost = normalizeAnalyticsEndpointHost(modelBaseUrl);
-      const modelName = requestType === 'image'
-        ? imageConfig.model_name || ''
-        : config.model_name || '';
-      const body = {
-        projectName: ANALYTICS_PROJECT_NAME,
-        event: 'ai_request',
-        version: typeof app?.getVersion === 'function' ? app.getVersion() : '',
-        platform: process.platform,
-        arch: process.arch,
-        client_id: config.analytics_client_id || '',
-        client_created_at: config.analytics_created_at || '',
-        ai_request_type: requestType,
-        ai_model_provider: modelProvider,
-        ai_model_base_url: modelEndpointHost,
-        ai_model_name: modelName,
-        prompt_tokens: tokenUsage.prompt_tokens,
-        completion_tokens: tokenUsage.completion_tokens,
-        total_tokens: tokenUsage.total_tokens,
-        text_model_name: requestType === 'text' ? modelName : '',
-        image_model_name: requestType === 'image' ? modelName : '',
-      };
-
-      return fetch(ANALYTICS_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-    })
-    .catch(() => undefined);
 }
 
 function imageExtensionFromMime(mimeType) {
@@ -1417,7 +1349,7 @@ async function chatWithConfig(app, config, request) {
   let requestBody = createChatRequestBody(config, preparedRequest, { stream: requestMode === 'stream' });
   let responseData = null;
   let errorMessage = '';
-  let analyticsTracked = false;
+  let tokenStatsRecorded = false;
   const timeoutMs = normalizeRequestTimeoutMs(request);
 
   try {
@@ -1447,8 +1379,7 @@ async function chatWithConfig(app, config, request) {
 
     responseData = result.responseData;
     recordTextTokenStats(config, result.usage);
-    trackAiRequest(app, config, { ai_request_type: 'text', usage: result.usage });
-    analyticsTracked = true;
+    tokenStatsRecorded = true;
     // 调用方要求完整输出时，达到长度上限的回复按失败处理，不交给业务保存；同一请求重试通常仍会截断。
     if (request.reject_truncated_output && result.finishReason === 'length') {
       throw new Error('模型输出达到长度上限被截断，本次结果未保存。可在设置-文本模型中提高输出长度上限后重试。');
@@ -1470,10 +1401,9 @@ async function chatWithConfig(app, config, request) {
     errorMessage = error.name === 'AbortError'
       ? request.timeout_message || `AI 请求超时（${timeoutMs / 1000} 秒）`
       : error.message;
-    if (!analyticsTracked) {
+    if (!tokenStatsRecorded) {
       recordTextTokenStats(config, null);
-      trackAiRequest(app, config, { ai_request_type: 'text' });
-      analyticsTracked = true;
+      tokenStatsRecorded = true;
     }
     writeAiLog(app, config, {
       request_id: requestId,
@@ -1518,7 +1448,7 @@ async function runAgentChatCompletionWithConfig(app, config, request) {
   const requestMode = requestBody.stream ? 'stream' : 'normal';
   const logTitle = resolveAiLogTitle(request, 'Pi Agent');
   let responseData = null;
-  let analyticsTracked = false;
+  let tokenStatsRecorded = false;
 
   try {
     writeAiLog(app, config, {
@@ -1541,8 +1471,7 @@ async function runAgentChatCompletionWithConfig(app, config, request) {
     });
     responseData = result?.responseData ?? null;
     recordTextTokenStats(config, result?.usage);
-    trackAiRequest(app, config, { ai_request_type: 'text', usage: result?.usage });
-    analyticsTracked = true;
+    tokenStatsRecorded = true;
     writeAiLog(app, config, {
       request_id: requestId,
       log_title: logTitle,
@@ -1556,9 +1485,8 @@ async function runAgentChatCompletionWithConfig(app, config, request) {
     });
     return result;
   } catch (error) {
-    if (!analyticsTracked) {
+    if (!tokenStatsRecorded) {
       recordTextTokenStats(config, null);
-      trackAiRequest(app, config, { ai_request_type: 'text' });
     }
     writeAiLog(app, config, {
       request_id: requestId,
@@ -1581,7 +1509,6 @@ async function testOpenAICompatibleImageModel(app, config, provider) {
   const imageConfig = config.image_model || {};
   const meta = OPENAI_IMAGE_PROVIDER_META[provider] || OPENAI_IMAGE_PROVIDER_META.volcengine;
   let responseData = null;
-  let analyticsTracked = false;
 
   if (!imageConfig.api_key) {
     throw new Error(`请先填写${meta.label} API Key`);
@@ -1636,8 +1563,6 @@ async function testOpenAICompatibleImageModel(app, config, provider) {
       throw error;
     }
 
-    trackAiRequest(app, config, { ai_request_type: 'image', usage: extractOpenAIUsage(responseData) });
-    analyticsTracked = true;
     const firstImage = responseData.data?.[0] || {};
     const imageUrl = firstImage.url || '';
     const imageData = firstImage.b64_json || '';
@@ -1670,9 +1595,6 @@ async function testOpenAICompatibleImageModel(app, config, provider) {
       mime_type: 'image/png',
     };
   } catch (error) {
-    if (!analyticsTracked) {
-      trackAiRequest(app, config, { ai_request_type: 'image' });
-    }
     const errorMessage = error?.name === 'AbortError' ? IMAGE_MODEL_TEST_TIMEOUT_MESSAGE : error?.message || '生图模型测试失败';
     writeAiLog(app, config, {
       request_id: requestId,
@@ -1693,7 +1615,6 @@ async function testOpenAICompatibleImageModel(app, config, provider) {
 
 async function testGoogleImageModel(app, config) {
   const imageConfig = config.image_model || {};
-  let analyticsTracked = false;
 
   if (!imageConfig.api_key) {
     throw new Error('请先填写 Google AI Studio API Key');
@@ -1734,8 +1655,6 @@ async function testGoogleImageModel(app, config) {
       ),
       AI_REQUEST_TIMEOUT_MS,
     ));
-    trackAiRequest(app, config, { ai_request_type: 'image', usage: extractGoogleUsage(responseData) });
-    analyticsTracked = true;
     const text = getGoogleText(responseData);
     const inlineData = getGoogleImageInlineData(responseData);
 
@@ -1765,9 +1684,6 @@ async function testGoogleImageModel(app, config) {
       mime_type: inlineData?.mimeType || inlineData?.mime_type || 'image/png',
     };
   } catch (error) {
-    if (!analyticsTracked) {
-      trackAiRequest(app, config, { ai_request_type: 'image' });
-    }
     const errorMessage = error?.name === 'AbortError' ? IMAGE_MODEL_TEST_TIMEOUT_MESSAGE : error?.message || '生图模型测试失败';
     writeAiLog(app, config, {
       request_id: requestId,
@@ -1800,7 +1716,6 @@ async function generateOpenAICompatibleImage(app, config, request, provider) {
   );
   const baseUrl = requireBaseUrl(imageConfig.base_url, `${meta.label} Base URL 缺失，请重新选择服务商后保存配置`);
   let responseData = null;
-  let analyticsTracked = false;
 
   try {
     writeAiLog(app, config, {
@@ -1825,8 +1740,6 @@ async function generateOpenAICompatibleImage(app, config, request, provider) {
       AI_REQUEST_TIMEOUT_MS,
       request.signal,
     ));
-    trackAiRequest(app, config, { ai_request_type: 'image', usage: extractOpenAIUsage(responseData) });
-    analyticsTracked = true;
 
     const item = responseData.data?.[0] || {};
     const image = await runWithOperationTimeout(
@@ -1853,10 +1766,6 @@ async function generateOpenAICompatibleImage(app, config, request, provider) {
     });
     return { success: true, title: request.title || '', ...saved };
   } catch (error) {
-    if (!analyticsTracked) {
-      trackAiRequest(app, config, { ai_request_type: 'image' });
-      analyticsTracked = true;
-    }
     writeAiLog(app, config, {
       request_id: requestId,
       log_title: logTitle,
@@ -1883,7 +1792,6 @@ async function generateGoogleImage(app, config, request) {
   const baseUrl = requireBaseUrl(imageConfig.base_url, 'Google AI Studio Base URL 缺失，请重新选择服务商后保存配置');
   const url = createGoogleImageUrl(baseUrl, imageConfig.model_name, requestMode);
   let responseData = null;
-  let analyticsTracked = false;
 
   try {
     writeAiLog(app, config, {
@@ -1909,8 +1817,6 @@ async function generateGoogleImage(app, config, request) {
       AI_REQUEST_TIMEOUT_MS,
       request.signal,
     ));
-    trackAiRequest(app, config, { ai_request_type: 'image', usage: extractGoogleUsage(responseData) });
-    analyticsTracked = true;
     const inlineData = getGoogleImageInlineData(responseData);
 
     if (!inlineData?.data) {
@@ -1934,10 +1840,6 @@ async function generateGoogleImage(app, config, request) {
     });
     return { success: true, title: request.title || '', ...saved };
   } catch (error) {
-    if (!analyticsTracked) {
-      trackAiRequest(app, config, { ai_request_type: 'image' });
-      analyticsTracked = true;
-    }
     writeAiLog(app, config, {
       request_id: requestId,
       log_title: logTitle,
@@ -2311,7 +2213,6 @@ async function runComfyUIImageGeneration(app, config, request, options = {}) {
   const logTitle = resolveAiLogTitle(request, request.title ? `AI生图-${request.title}` : 'AI生图');
   const logExtra = options.logExtra || {};
   let responseData = null;
-  let analyticsTracked = false;
 
   try {
     const template = await resolveComfyUIWorkflowTemplate(baseUrl, imageConfig, { signal: request.signal });
@@ -2343,8 +2244,6 @@ async function runComfyUIImageGeneration(app, config, request, options = {}) {
       request.signal,
     );
     responseData = { prompt_id: promptId, status: entry?.status || null, images };
-    trackAiRequest(app, config, { ai_request_type: 'image' });
-    analyticsTracked = true;
 
     const image = await runWithOperationTimeout(
       (signal) => fetchComfyUIImage(baseUrl, images[0], { signal }),
@@ -2381,9 +2280,6 @@ async function runComfyUIImageGeneration(app, config, request, options = {}) {
     });
     return { success: true, title: request.title || '', ...saved };
   } catch (error) {
-    if (!analyticsTracked) {
-      trackAiRequest(app, config, { ai_request_type: 'image' });
-    }
     const errorMessage = options.isTest && error?.name === 'AbortError' ? IMAGE_MODEL_TEST_TIMEOUT_MESSAGE : error?.message || 'ComfyUI 生图失败';
     writeAiLog(app, config, {
       request_id: requestId,

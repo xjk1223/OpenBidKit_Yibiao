@@ -2,7 +2,7 @@
 
 ## 范围
 - 当前有效产品代码在 `client/`。
-- `analytics/` 是独立 Cloudflare Worker API 与 Dashboard：除埋点采集、聚合和查看外，也承载客户端公告、更新日志、资源、插件、模型信息、许可证和 Agent 失败诊断等在线服务；修改上述在线服务协议时同步检查两端。
+- `analytics/` 是独立 Cloudflare Worker API 与 Dashboard：承载客户端公告、更新日志、资源、插件、模型信息和许可证等在线服务，并保留历史统计聚合与查看；客户端已不再上报使用统计或 Agent 失败诊断。修改上述在线服务协议时同步检查两端。
 
 ## Client
 - 开发 `client/` 前以及初次对话时，必须先完整阅读 `client/开发说明.md`，保持框架风格一致性。
@@ -17,7 +17,7 @@
 
 ## Client 架构
 - 主窗口 Renderer 入口：`client/src/main.tsx` -> `AppProviders` -> `WorkspaceDatabaseGate` -> `App` -> `AppShell` / `src/app/AppRouter.tsx`；开发者独立窗口由 `main.tsx` 的 `?window=...` 分支挂载。
-- 新增菜单页面要同步 `src/shared/types/navigation.ts`、`src/app/menuConfig.ts`、`src/app/AppRouter.tsx`、`src/components/Sidebar.tsx` 的图标映射，以及 `analytics/dashboard/public/src/pages/traffic.js` 的埋点路由中文名；页面操作条按需复用 `FloatingToolbar`。
+- 新增菜单页面要同步 `src/shared/types/navigation.ts`、`src/app/menuConfig.ts`、`src/app/AppRouter.tsx`、`src/components/Sidebar.tsx` 的图标映射；页面操作条按需复用 `FloatingToolbar`。
 - 功能代码放 `src/features/<feature>/`；跨功能运行时代码放 `src/shared/`，且不引用 feature。现有 bridge/type barrel 组合 feature 类型是边界例外，不扩展成组件或服务依赖。
 - Renderer 可复用 Prompt 放 `src/shared/prompts/`，feature 或 Main 后台任务专用 Prompt 与对应 service/task 放在一起；不要在产品组件内硬编码大段 Prompt。
 - UI 使用全局 CSS + Radix 基础组件，不使用 Tailwind；用户可见文案用中文。
@@ -51,7 +51,7 @@
 - `analytics/scripts/deploy-if-changed.mjs` 在 Cloudflare Workers CI 下只部署对应目录变化；强制部署用 `FORCE_DEPLOY=1 npm run deploy`。
 - 生产 API Worker 所在 Cloudflare 账户已启用 Workers Paid Plan；当前允许使用 5 个统计 Cron 和独立的模型信息同步 Cron，不要再按免费计划 5 个 Cron 上限要求合并任务。
 - 不把 `ACCOUNT_ID`、`ADMIN_TOKEN`、`ANALYTICS_API_TOKEN` 等密钥写入仓库；Worker 配置保留 `keep_vars: true`，不要在 `wrangler.jsonc` 增加 `secrets.required`。
-- 禁止删除、绕过或弱化任何埋点、统计、Analytics Dashboard 展示和 Worker 聚合逻辑；如确需调整，必须等价保留统计能力并说明影响。
+- 客户端埋点和 Agent 失败诊断上传已移除，不要重新加入；Worker 的统计聚合与 Dashboard 展示保留用于历史数据查看。
 
 ## 必须遵守的原则
 - 尽量保持整体编码风格统一；前端组件和样式优先封装、复用现有实现。

@@ -7,7 +7,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObjec
 import {
   HEADER_CHROME_HEIGHT_RANGE_CM, FOOTER_CHROME_HEIGHT_RANGE_CM, resolveChromeGeometryDefaults,
 } from '../../../../electron/shared/chrome/index.mjs';
-import { trackPageView } from '../../../shared/analytics/analytics';
 import { AppDialog, AppSwitch, FloatingToolbar, ProgressBar, useToast } from '../../../shared/ui';
 import type { FloatingToolbarGroup } from '../../../shared/ui';
 import type {
@@ -357,7 +356,6 @@ function ExportFormatPage({
   }, []);
 
   useEffect(() => {
-    trackPageView(mode === 'create' ? 'new-template' : mode === 'view' ? 'my-templates/view' : 'my-templates/edit');
     let cancelled = false;
     (async () => {
       setLoaded(false);

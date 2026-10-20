@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import { trackConfigUsage } from '../../../shared/analytics/analytics';
 import { AppDialog, AppSwitch, DetailHelpLink, FloatingToolbar, InlineSpinner, InputWithAction, OfflineLicenseActivationDialog, useAutoAnswer, useToast } from '../../../shared/ui';
 import { showUpdateReadyToast } from '../../../shared/updateToast';
 import type { FloatingToolbarGroup } from '../../../shared/ui';
@@ -974,7 +973,6 @@ function SettingsPage({ onDeveloperModeChange, request, onRequestHandled, regist
       if (result?.success) {
         setSavedConfig(config);
         onDeveloperModeChange?.(Boolean(config.developer_mode));
-        trackConfigUsage({}, config);
       }
       return Boolean(result?.success);
     } catch (error) {
@@ -1273,7 +1271,6 @@ function SettingsPage({ onDeveloperModeChange, request, onRequestHandled, regist
         },
       }));
       setSavedConfig(testedConfig);
-      trackConfigUsage({}, testedConfig);
       const previewSrc = result?.image_url || (result?.image_data ? `data:${result.mime_type || 'image/png'};base64,${result.image_data}` : '');
 
       if (previewSrc) {
@@ -1308,7 +1305,6 @@ function SettingsPage({ onDeveloperModeChange, request, onRequestHandled, regist
         },
       }));
       setSavedConfig(failedConfig);
-      trackConfigUsage({}, failedConfig);
       showToast(message, 'error');
     } finally {
       setTestingImageModel(false);
@@ -2661,11 +2657,6 @@ function SettingsPage({ onDeveloperModeChange, request, onRequestHandled, regist
                 <span>02</span>
                 <strong>线上 AI 请求只发送给你配置的服务商</strong>
                 <p>当你使用 OpenAI 兼容接口、MinerU 或其他线上 API 时，应用会把完成任务所需的内容发送给你自行配置的服务商。这是实现文档解析、内容生成、模型测试等功能的必要步骤；这些请求不经过我的服务器，我也不会额外留存任何请求内容或生成结果。</p>
-              </article>
-              <article className="privacy-item">
-                <span>03</span>
-                <strong>匿名埋点只用于了解功能使用情况</strong>
-                <p>为了判断开源项目是否有人使用、哪些功能更常用，应用会把匿名页面访问和功能使用次数上报到 Cloudflare。统计不包含文档内容、文件名、本地路径、API Key、用户输入、生成结果或任何可还原业务内容的信息。</p>
               </article>
             </div>
           </div>

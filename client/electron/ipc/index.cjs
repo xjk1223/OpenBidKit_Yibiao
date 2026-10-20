@@ -362,7 +362,7 @@ function registerIpcHandlers({ app, mainWindow, checkAndDownloadUpdate, triggerU
     onPaid: () => sendToWebContents(mainWindow.webContents, 'donation:paid'),
   });
   const autoConfirmationService = createAutoConfirmationService({ configStore });
-  const agentService = createAgentService({ app, configStore, aiService, licenseService, autoConfirmationService });
+  const agentService = createAgentService({ app, configStore, aiService, autoConfirmationService });
   const fileService = createFileService({ app, configStore });
   const openXmlHelperService = createOpenXmlHelperService({ app, configStore });
   let technicalPlanExport;
