@@ -29,6 +29,7 @@ const pageLabels = {
   'feasibility-report/content': '可行性研究报告 - 正文生成',
   'business-bid': '商务标（历史）',
   'knowledge-base': '知识库',
+  'credential-library': '资信库',
   'resource-download': '资源下载',
   resources: '精选资源',
   'knowledge-base/library': '知识库 - 文档列表',
