@@ -172,6 +172,16 @@ static class RestrictedHtmlDocumentRenderer
         {
             foreach (var drawing in root.Descendants<DW.DocProperties>()) drawing.Id = drawingId++;
         }
+        // 正文图片按出现顺序命名为“图片1、图片2…”，与分范围转换时的临时编号无关。
+        var pictureNo = 1;
+        foreach (var inline in mainPart.Document.Descendants<DW.Inline>())
+        {
+            var picture = inline.Descendants<PIC.NonVisualDrawingProperties>().FirstOrDefault();
+            if (picture is null || inline.DocProperties is null) continue;
+            var name = $"图片{pictureNo++}";
+            inline.DocProperties.Name = name;
+            picture.Name = name;
+        }
         mainPart.Document.Save();
         foreach (var part in mainPart.HeaderParts) part.Header.Save();
         foreach (var part in mainPart.FooterParts) part.Footer.Save();

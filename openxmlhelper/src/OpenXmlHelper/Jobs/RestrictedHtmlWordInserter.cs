@@ -423,7 +423,8 @@ static partial class RestrictedHtmlWordInserter
         var crop = spec.Fit == FigureFit.Contain
             ? new CropValues(0, 0, 0, 0)
             : ResolveCenterCrop(spec.Dimensions, spec.Size);
-        var name = Path.GetFileName(spec.AssetPath);
+        // 不用素材文件名：引用名里带素材库、示意图的内部 ID，会留在交出去的标书里。
+        var name = $"图片{drawingId}";
 
         var drawing = new Wp.Drawing(
             new DW.Inline(
